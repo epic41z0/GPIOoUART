@@ -1,28 +1,35 @@
 #include <avr/io.h>
+#include "serial.h"
 
-#define LED_PIN 8
-#define BUTTON_PIN 9
+void uart_init() {
+    // Konfigurera baud rate till 9600
+    UBRR0H = (unsigned char)(103 >> 8);
+    UBRR0L = (unsigned char)103;
+    // Aktivera sändning och mottagning
+    UCSR0B = (1 << TXEN0) | (1 << RXEN0);
+    // Ställ in frame format: 8 data, 1 stop bit
+    UCSR0C = (1 << UCSZ01) | (1 << UCSZ00);
+}
 
-int main() {
-    // Konfigurera LED_PIN som output
-    DDRB |= (1 << LED_PIN);
+char uart_getchar() {
+    // Vänta på att ett tecken ska mottagas
+    while (!(UCSR0A & (1 << RXC0)))
+        ;
+    // Returnera tecknet som mottogs
+    return UDR0;
+}
 
-    // Konfigurera BUTTON_PIN som input
-    DDRB &= ~(1 << BUTTON_PIN);
-    // Aktivera pull-up motstånd för knappen
-    PORTB |= (1 << BUTTON_PIN);
+void uart_putchar(char data) {
+    // Vänta på att bufferten ska bli klar för sändning
+    while (!(UCSR0A & (1 << UDRE0)))
+        ;
+    // Lägg till data i sändningsbufferten
+    UDR0 = data;
+}
 
-    while (1) {
-        // Läs status för knappen
-        if (PINB & (1 << BUTTON_PIN)) {
-            // Om knappen är tryckt, sätt LED_PIN till HIGH
-            PORTB |= (1 << LED_PIN);
-        } else {
-            // Annars, sätt LED_PIN till LOW
-            PORTB &= ~(1 << LED_PIN);
-        }
-    }
-  
-
-    return 0;
+void uart_echo() {
+    // Vänta på ett inkommande tecken
+    char received_char = uart_getchar();
+    // Skicka tillbaka samma tecken
+    uart_putchar(received_char);
 }
